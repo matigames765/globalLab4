@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// PARTE DE PRODUCTO
+
+enum TipoProducto{
+  ZAPATILLA
+  ROPA
+}
+
+enum Seccion{
+  MASCULINO
+  FEMENINO
+  NIÑOS
+  DESTACADOS
+  ACCESORIOS
+}
+
+model categoria{
+  id        Int @id @default(autoincrement())
+  nombre    String
+  productos producto[] //bidireccional
+}
+
+model talle{
+  id    Int @id @default(autoincrement())
+  talle String
+  detallesProductos detalleProducto[]
+}
+
+model descuento{
+  id          Int @id @default(autoincrement())
+  fechaInicio String
+  fechaFin    String
+  precio      precio? //bidireccional
+  ordenCompra ordenCompra? //bidireccional
+}
+
+model precio{
+  id              Int        @id @default(autoincrement())
+  precioCompra    Int
+  precioVenta     Int
+  descuentoId     Int?       @unique
+  descuento       descuento? @relation(fields: [descuentoId], references: [id])
+  detalleProducto detalleProducto? //bidireccional
+}
+
+model imagenProducto{
+  id              Int @id @default(autoincrement())
+  url             String
+  alt             String
+  detalleProducto detalleProducto? //bidireccional
+}
+
+model detalleProducto{
+  id               Int             @id @default(autoincrement())
+  talles           talle[]
+  stock            Int
+  color            String
+  estado           Boolean?        @default(true)
+  productoId       Int?            @unique
+  producto         producto?       @relation(fields: [productoId], references: [id])
+  precioId         Int?            @unique
+  precio           precio?         @relation(fields: [precioId], references: [id])
+  imagenProductoId Int?            @unique
+  imagenProducto   imagenProducto? @relation(fields: [imagenProductoId], references: [id])
+}
+
+
+model producto{
+  id                 Int               @id @default(autoincrement())
+  nombre             String
+  categoriaId        Int?              @unique
+  categoria          categoria?        @relation(fields: [categoriaId], references: [id])
+  seccion            Seccion?
+  tipoProducto       TipoProducto
+  detallesProductos  detalleProducto[] //bidireccional
+  ordenCompraDetalle ordenCompraDetalle? //bidireccional
+}
+
+// PARTE DE USUARIO
+
+enum Rol{
+  ADMIN
+  USER
+}
+
+model user {
+  id                 Int               @id @default(autoincrement())
+  email              String            @unique
+  nombre             String?
+  contraseña         String
+  dni                String?
+  rol                Rol?              @default(USER)
+  usuarioDireccionId Int?              @unique
+  usuarioDireccion   usuarioDireccion? @relation(fields: [usuarioDireccionId], references: [id])
+}
+
+model usuarioDireccion{
+  id          Int         @id @default(autoincrement())
+  usuario     user?      //bidireccional
+  direcciones direccion[] //bidireccional
+  ordenCompra ordenCompra? //bidireccional
+}
+
+model direccion{
+  id                 Int    @id @default(autoincrement())
+  localidad          String
+  pais               String
+  provincia          String
+  departamento       String
+  usuarioDireccionId Int?              @unique
+  usuarioDireccion   usuarioDireccion? @relation(fields: [usuarioDireccionId], references: [id])
+}
+
+model ordenCompra{
+  id                 Int               @id @default(autoincrement())
+  usuarioDireccionId Int?              @unique
+  usuarioDireccion   usuarioDireccion? @relation(fields: [usuarioDireccionId], references: [id])
+  total              Int
+  descuentoId        Int?              @unique
+  descuento          descuento?        @relation(fields: [descuentoId], references: [id])
+  fechaCompra        String
+  ordenCompraDetalle ordenCompraDetalle? //bidireccional
+}
+
+model ordenCompraDetalle{
+  id            Int          @id @default(autoincrement())
+  ordenCompraId Int?         @unique
+  ordenCompra   ordenCompra? @relation(fields: [ordenCompraId], references: [id])
+  productoId    Int?         @unique
+  producto      producto?    @relation(fields: [productoId], references: [id])
+  cantidad      Int
+}
