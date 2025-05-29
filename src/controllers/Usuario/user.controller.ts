@@ -2,6 +2,7 @@ import {Request, Response} from 'express'
 import prisma from '../../client/client'
 import { comparePasswords, hashPassword } from '../../services/password.service'
 import { generateToken } from '../../services/auth.service'
+import { Prisma } from '@prisma/client'
 
 export const getAllUsers = async(req: Request, res: Response): Promise<void> => {
     try{
@@ -23,13 +24,12 @@ export const getUserById = async(req: Request, res: Response): Promise<void> => 
             }
         })
 
-        if(!user){
-            res.status(404).json({message: "No se encontro el usuario con el id " + id})
-            return
-        }
-
         res.status(200).json(user)
     }catch(error){
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "El producto no fue encontrado" })
+            return
+        }
         res.status(500).json({message:'Error en getUserById: ' + error})
     }
 }
@@ -50,7 +50,10 @@ export const createUser = async(req: Request, res: Response) => {
                 email,
                 contraseña: hashPass,
                 dni,
-                rol
+                rol,
+                usuarioDireccion: usuarioDireccionId
+          ? { connect: { id: Number(usuarioDireccionId) } }
+          : undefined,
             }
         })
 
@@ -61,41 +64,53 @@ export const createUser = async(req: Request, res: Response) => {
             res.status(400).json({message: "El email ingresado ya esta en uso"})
             return
         }
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "El producto no fue encontrado" })
+            return
+        }
         res.status(500).json({message:'Error en createUser: ' + error})
     }
 }
 
 
 
-export const editUser = async(req: Request, res: Response): Promise<void> => {
-    try{
-        const {id} = req.params
-        const {nombre, email, contraseña, dni, rol, usuarioDireccionId} = req.body
+export const editUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { nombre, email, contraseña, dni, rol, usuarioDireccionId } =
+      req.body;
 
-        const hashPass = await hashPassword(contraseña)
+    const hashPass = await hashPassword(contraseña);
 
-        const updatedUser = await prisma.user.update({
-            where: {
-                id: Number(id)
-            },
-            data: {
-                nombre,
-                email,
-                contraseña: hashPass,
-                dni,
-                rol
-            }
-        })
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: Number(id),
+      },
+      data: {
+        nombre,
+        email,
+        contraseña: hashPass,
+        dni,
+        rol,
+        usuarioDireccion: usuarioDireccionId
+          ? { connect: { id: Number(usuarioDireccionId) } }
+          : undefined,
+      },
+    });
 
-        res.status(200).json(updatedUser)
-    }catch(error: any){
-        if(error?.code === 'P2002' && error?.meta?.target?.includes('email')){
-            res.status(400).json({message: "El email ingresado ya esta en uso"})
-            return
-        }
-        res.status(500).json({message:'Error en editUser: ' + error})
+    res.status(200).json(updatedUser);
+  } catch (error: any) {
+    if (error?.code === "P2002" && error?.meta?.target?.includes("email")) {
+      res.status(400).json({ message: "El email ingresado ya esta en uso" });
+      return;
     }
-}
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "El usuario no fue encontrado" })
+            return
+    }
+    res.status(500).json({ message: "Error en editUser: " + error });
+  }
+};
 
 export const deleteUser = async(req: Request, res: Response) => {
     try{
@@ -108,7 +123,11 @@ export const deleteUser = async(req: Request, res: Response) => {
         })
 
         res.status(200).json(deleteUser)
-    }catch(error){
+    }catch(error: any){
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+            res.status(404).json({ message: "El usuario no fue encontrado" })
+            return
+        }
         res.status(500).json({message:'Error en deleteUser: ' + error})
     }
 }

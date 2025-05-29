@@ -11,5 +11,5 @@ export interface IDetalleProducto{
     estado?: boolean,
     producto?: IProducto,
     precio?: IPrecio,
-    imagen?: IImagenProducto
+    imagenProducto?: IImagenProducto
 }
